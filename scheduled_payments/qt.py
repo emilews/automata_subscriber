@@ -1,4 +1,4 @@
-import uuid, time, weakref, binhex, os
+import uuid, time, weakref, binascii, os
 
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
@@ -352,7 +352,7 @@ class Plugin(BasePlugin):
         
         wallet_window.amount_e.setAmount(totalSatoshis)
         
-        tx_extra = ' (ref:' + str(binhex.binascii.hexlify(os.urandom(8))).split("'")[1] + ')'
+        tx_extra = ' (ref:' + str(binascii.hexlify(os.urandom(8))).split("'")[1] + ')'
         
         if len(matches) == 1:
             match = matches[0]

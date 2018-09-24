@@ -361,6 +361,8 @@ class Plugin(BasePlugin):
         else:
             wallet_window.message_e.setText(_("Scheduled payments") + tx_extra)
                         
+        # freeze critical fields in the form, these get unfrozen when the user clicks "Clear" or do_clear() is
+        # called during normal app operation.
         for e in [wallet_window.payto_e, wallet_window.amount_e, wallet_window.message_e]:
             e.setFrozen(True)
         wallet_window.max_button.setDisabled(True)

@@ -37,4 +37,3 @@ Once you have the plugin installed and enabled, you may use it.
 ## Known Issues ##
 
 * The fake clock is not correctly hooked up to the payment scheduler.  So it does work, but.. it's not obvious how it works.  Note that due payments are only detected once every real time minute, at 1 second past each minute.  But the time used for detection is always the current selected clock, whether real or fake.
-* If you enter more than one address in the scheduled payment, who knows what will happen.  Only one address is stored.

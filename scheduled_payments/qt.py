@@ -14,6 +14,7 @@ import electroncash.version
 from . import scheduler
 from . import when
 from .constants import *
+from .util import *
 
 
 class SchedulerThreadJob:
@@ -278,24 +279,26 @@ class Plugin(BasePlugin):
         try:
             tx = wallet.mktx(outputs, password, wallet_window.config)
         except NotEnoughFunds:
-            wallet_window.show_error(_("Not Enough Funds"))
+            wallet_window.show_error(_("Faiiled to automatically pay a Scheduled Payment:") + " " + _("Insufficient funds"))
         except ExcessiveFee:
-            wallet_window.show_error(_("Excessive Fee"))
+            wallet_window.show_error(_("Faiiled to automatically pay a Scheduled Payment:") + " " + _("Excessive Fee"))
         except BaseException as e:
-            wallet_window.show_error(str(e))
-        if not tx:
-            return
-        status, data = network.broadcast(tx)
-        
-        if status:
-            # data is txid.
-            return data
-        # data is error message
+            wallet_window.show_error(_("Faiiled to automatically pay a Scheduled Payment:") + " " + str(e))
+
+        if tx:
+            status, data = network.broadcast(tx)
+            
+            if status:
+                # data is txid.
+                return data
+            # data is error message
+            wallet_window.show_error(_("Faiiled to automatically pay a Scheduled Payment:") + " " + str(data))
 
         # Fallback to remembering the overdue payments.
         # TODO: Alert the user about the failure - best way is to mark the payment.
         for payment_data, overdue_payment_times in payment_entries:
             self.remember_overdue_payment_occurrences( payment_data, overdue_payment_times)
+        self.wallet_data[wallet_name].save() # remember didn't seem to work without calling this explicitly -Calin
         
     def remember_overdue_payment_occurrences(self, payment_data, overdue_payment_times):
         """ Record the newly identified overdue payment occurrences. """
@@ -345,8 +348,11 @@ class Plugin(BasePlugin):
 
         totalSatoshis = 0.0
         addresses = []
+        amountStrs = dict()
+        f = ValueFormatter(wallet_window)
         for occurrence_count, payment_data in matches:
-            totalSatoshis += occurrence_count * payment_data[PAYMENT_AMOUNT]
+            amount = occurrence_count * payment_data[PAYMENT_AMOUNT]
+            totalSatoshis += amount
             address = payment_data[PAYMENT_ADDRESS]
             
             contact_name = None
@@ -356,11 +362,16 @@ class Plugin(BasePlugin):
                 addresses.append(contact_name +' <'+ address +'>')
             else:
                 addresses.append(Address.from_string(address).to_ui_string())
-        
-        wallet_window.payto_e.setText('\n'.join(addresses))
-        wallet_window.payto_e.update_size()
-        
+
+            amountStrs[addresses[-1]] = f.format_value(amount, DISPLAY_AS_AMOUNT_NO_UNITS)
+
+        if len(addresses) > 1:
+            wallet_window.payto_e.paytomany()
+            wallet_window.payto_e.setText("\n".join([ add + ", " + amt for add, amt in amountStrs.items()]))
+        else:
+            wallet_window.payto_e.setText(addresses)
         wallet_window.amount_e.setAmount(totalSatoshis)
+        wallet_window.payto_e.update_size()
         
         tx_extra = ' (ref:' + str(binascii.hexlify(os.urandom(8))).split("'")[1] + ')'
         

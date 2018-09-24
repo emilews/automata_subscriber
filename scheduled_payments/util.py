@@ -3,6 +3,7 @@ import datetime
 DISPLAY_AS_AMOUNT = 1
 DISPLAY_AS_ADDRESS = 2
 DISPLAY_AS_DATETIME = 3
+DISPLAY_AS_AMOUNT_NO_UNITS = 4
 
 
 from electroncash.address import Address
@@ -18,8 +19,8 @@ class ValueFormatter:
             return contact_name +" <"+ address +">"        
 
     def format_value(self, value, display_type=0):
-        if display_type == DISPLAY_AS_AMOUNT:
-            return self.window.format_amount(value, whitespaces = False) +' '+ self.window.base_unit()
+        if display_type in (DISPLAY_AS_AMOUNT, DISPLAY_AS_AMOUNT_NO_UNITS):
+            return self.window.format_amount(value, whitespaces = False) + ((' '+ self.window.base_unit()) if display_type == DISPLAY_AS_AMOUNT else '')
         elif display_type == DISPLAY_AS_ADDRESS:
             contact_name = self.format_contact(value)
             if contact_name is None:

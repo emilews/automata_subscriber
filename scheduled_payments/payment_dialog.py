@@ -54,7 +54,7 @@ class PaymentDialog(QDialog, MessageBoxMixin):
             self.value_run_occurrences = self.payment_data[PAYMENT_COUNT0]
         
         # NOTE: Set up the UI for this dialog.
-        self.setMinimumWidth(350)        
+        self.setMinimumWidth(500)
         if payment_data is None:
             self.setWindowTitle(_("Create New Scheduled Payment"))
         else:
@@ -62,6 +62,7 @@ class PaymentDialog(QDialog, MessageBoxMixin):
             
         formLayout = QFormLayout()
         self.setLayout(formLayout)
+        formLayout.setFieldGrowthPolicy(QFormLayout.ExpandingFieldsGrow)
         
         # Input fields.
         msg = _('Description of the payment (not mandatory).') + '\n\n' + _('The description is not sent to the recipient of the funds. It is stored in your wallet file, and displayed in the \'History\' tab.')
@@ -80,6 +81,7 @@ class PaymentDialog(QDialog, MessageBoxMixin):
         
         # WARNING: This will clear the amount when an address is set, see PayToEdit.check_text.
         self.payto_edit = PayToEdit(self)
+        self.payto_edit.setSizePolicy(QSizePolicy.MinimumExpanding, QSizePolicy.Preferred)
         msg = _('Recipient of the funds.') + '\n\n' + _('You may enter a Bitcoin Cash address, a label from your list of contacts (a list of completions will be proposed), or an alias (email-like address that forwards to a Bitcoin Cash address)')
         payto_label = HelpLabel(_('Pay to'), msg)
         formLayout.addRow(payto_label, self.payto_edit)
@@ -92,6 +94,8 @@ class PaymentDialog(QDialog, MessageBoxMixin):
             if contact_name is not None:
                 self.payto_edit.setText(contact_name +' <'+ address +'>')
             else:
+                if Address.is_valid(address):
+                    address = Address.from_string(address).to_ui_string()
                 self.payto_edit.setText(address)                
         if payment_data is not None:
             set_payment_address(payment_data[PAYMENT_ADDRESS])

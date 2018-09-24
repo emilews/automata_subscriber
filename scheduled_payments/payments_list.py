@@ -22,6 +22,8 @@ class ScheduledPaymentsList(MyTreeWidget, MessageBoxMixin):
         ], 0, [])
         self.setSelectionMode(QAbstractItemView.ExtendedSelection)
         self.setSortingEnabled(True)
+        if parent:
+            parent.cashaddr_toggled_signal.connect(self.update)
         
         self.plugin = plugin
         self.wallet_name = wallet_name

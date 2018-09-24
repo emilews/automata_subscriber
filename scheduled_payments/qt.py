@@ -1,6 +1,4 @@
-import uuid
-import time
-import weakref
+import uuid, time, weakref, binhex, os
 
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
@@ -158,6 +156,10 @@ class Plugin(BasePlugin):
         
         if len(self.wallet_windows) == 0:
             self.close_clock_window()
+
+        # remove our enqueued "will possibly pay" payments 
+        to_del = { k for k,v in self.will_possibly_pay.items() if v[0] == wallet_name }
+        for k in to_del: self.will_possibly_pay.pop(k, None)
             
     def get_due_payments_for_wallet(self, wallet_name, current_time):
         matches = []
@@ -300,13 +302,36 @@ class Plugin(BasePlugin):
                 return True
         return False
         
+    @hook
+    def set_label(self, wallet, addr_or_txid, label):
+        ''' Catch when they actually paid -- wallet.set_label is called once a payment is done, passing us txid and the unique description
+            we generated in prompt_pay_overdue_payment_occurrences() below.
+            We use that unique description key to catch the payment that was made and thus know the payments were made, so
+            we mark them as such. '''
+        self.print_error("set_label called", wallet, addr_or_txid, label)
+        vals = self.will_possibly_pay.pop(label, None)
+        if vals:
+            wallet_name, payment_keys = vals
+            if wallet.basename() == wallet_name and not Address.is_valid(addr_or_txid):
+                # matches
+                self.print_error("Payment occurrence matched, forgetting: ",addr_or_txid,label,wallet_name,payment_keys)
+                self.forget_overdue_payment_occurrences(wallet_name, payment_keys, mark_paid = True)
+            else:
+                self.print_error("No match, putting it back in our dict")
+                # doesn't match, remember this thing
+                self.will_possibly_pay[label] = vals
+
+    will_possibly_pay = dict() # class-level dict of tx_desc (containiing a unique key) -> (wallet_name, payment_occurrence_keys)
+
     def prompt_pay_overdue_payment_occurrences(self, wallet_name, payment_occurrence_keys):
-        matches = self.forget_overdue_payment_occurrences(wallet_name, payment_occurrence_keys, mark_paid=True)
+        matches = self.match_overdue_payment_occurrences(wallet_name, payment_occurrence_keys)
         if not len(matches):
             return
 
         wallet_window = self.wallet_windows[wallet_name]
         wallet_window.show_send_tab()
+        wallet_window.do_clear()
+        wallet = wallet_window.wallet
 
         totalSatoshis = 0.0
         addresses = []
@@ -320,20 +345,49 @@ class Plugin(BasePlugin):
             if contact_name is not None:
                 addresses.append(contact_name +' <'+ address +'>')
             else:
-                addresses.append(address)
+                addresses.append(Address.from_string(address).to_ui_string())
         
         wallet_window.payto_e.setText('\n'.join(addresses))
         wallet_window.payto_e.update_size()
         
         wallet_window.amount_e.setAmount(totalSatoshis)
         
+        tx_extra = ' (ref:' + str(binhex.binascii.hexlify(os.urandom(8))).split("'")[1] + ')'
+        
         if len(matches) == 1:
             match = matches[0]
             payment_data = match[1]
-            wallet_window.message_e.setText(payment_data[PAYMENT_DESCRIPTION].strip() or _("Scheduled payment"))
+            wallet_window.message_e.setText( (payment_data[PAYMENT_DESCRIPTION].strip() or _("Scheduled payment")) + tx_extra)
         else:
-            wallet_window.message_e.setText(_("Scheduled payments"))
-                    
+            wallet_window.message_e.setText(_("Scheduled payments") + tx_extra)
+                        
+        for e in [wallet_window.payto_e, wallet_window.amount_e, wallet_window.message_e]:
+            e.setFrozen(True)
+        wallet_window.max_button.setDisabled(True)
+        
+        tx_desc = wallet_window.message_e.text()
+                
+        self.will_possibly_pay[tx_desc] = (wallet_name, payment_occurrence_keys)
+        
+     
+    def match_overdue_payment_occurrences(self, wallet_name, payment_occurrence_keys):
+        wallet_data = self.wallet_data[wallet_name]
+        payment_entries = wallet_data.get(PAYMENT_DATA_KEY, [])
+
+        # Clear the overdue dates from any payments that have them.
+        matches = []
+        for payment_data in payment_entries:
+            forget_count = 0
+            occurrence_times = [ k[1] for k in payment_occurrence_keys if k[0] == payment_data[PAYMENT_ID] ]
+            forget_times = []
+            for forget_time in occurrence_times:
+                if forget_time in payment_data[PAYMENT_DATESOVERDUE]:
+                    forget_times.append(forget_time)
+            if len(forget_times):
+                matches.append( (len(forget_times), payment_data) )        
+        return matches
+    
+            
     def forget_overdue_payment_occurrences(self, wallet_name, payment_occurrence_keys, mark_paid=False):
         wallet_data = self.wallet_data[wallet_name]
         payment_entries = wallet_data.get(PAYMENT_DATA_KEY, [])
@@ -357,6 +411,7 @@ class Plugin(BasePlugin):
         self.refresh_ui_for_wallet(wallet_name)
         
         return matches
+    
          
     def add_ui_for_wallet(self, wallet_name, window):
         from .payments_list import ScheduledPaymentsList

@@ -4,6 +4,9 @@ DISPLAY_AS_AMOUNT = 1
 DISPLAY_AS_ADDRESS = 2
 DISPLAY_AS_DATETIME = 3
 
+
+from electroncash.address import Address
+
 class ValueFormatter:
     def __init__(self, window):
         self.window = window
@@ -20,7 +23,10 @@ class ValueFormatter:
         elif display_type == DISPLAY_AS_ADDRESS:
             contact_name = self.format_contact(value)
             if contact_name is None:
-                contact_name = value
+                if Address.is_valid(value):
+                    contact_name = Address.from_string(value).to_ui_string()
+                else:
+                    contact_name = value
             return contact_name
         elif display_type == DISPLAY_AS_DATETIME:
             if value is None:

@@ -8,7 +8,7 @@ from electroncash.address import Address
 from electroncash.i18n import _
 from electroncash.bitcoin import TYPE_ADDRESS
 from electroncash.plugins import BasePlugin, hook
-from electroncash.util import user_dir
+from electroncash.util import user_dir, NotEnoughFunds, ExcessiveFee
 import electroncash.version
 
 from . import scheduler
@@ -274,7 +274,17 @@ class Plugin(BasePlugin):
             outputs.append((TYPE_ADDRESS, address, totalSatoshis))        
 
         password = None
-        tx = wallet.mktx(outputs, password, wallet_window.config)
+        tx = None
+        try:
+            tx = wallet.mktx(outputs, password, wallet_window.config)
+        except NotEnoughFunds:
+            wallet_window.show_error(_("Not Enough Funds"))
+        except ExcessiveFee:
+            wallet_window.show_error(_("Excessive Fee"))
+        except BaseException as e:
+            wallet_window.show_error(str(e))
+        if not tx:
+            return
         status, data = network.broadcast(tx)
         
         if status:

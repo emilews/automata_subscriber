@@ -1,5 +1,5 @@
 
-
+import sys
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
@@ -44,7 +44,12 @@ class PaymentActionDialog(QDialog, MessageBoxMixin):
         b.clicked.connect(self.close)
         b.setDefault(True)
         
-        self.buttons = [ self.action_button, self.cancel_button ]
+        if sys.platform == "darwin":
+            # macOS conventions
+            self.buttons = [ self.cancel_button, self.action_button ]
+        else:
+            self.buttons = [ self.action_button, self.cancel_button ]
+
         self.summaryLabel = QLabel("Selected total: 0 BCH (0 occurrences)")
 
         payment_entries = self.plugin.get_wallet_payments(wallet_name)

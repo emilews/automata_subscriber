@@ -1,4 +1,4 @@
-import datetime
+import datetime, sys
 
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
@@ -186,7 +186,11 @@ class PaymentDialog(QDialog, MessageBoxMixin):
         b.clicked.connect(self.close)
         b.setDefault(True)
 
-        self.buttons = [self.save_button, self.cancel_button]
+        # pet peeve -- on macOS it's customary to have cancel on left, action-on-right in dialogs
+        if sys.platform == 'darwin':
+            self.buttons = [self.cancel_button, self.save_button]
+        else:
+            self.buttons = [self.save_button, self.cancel_button]
         
         hbox = QHBoxLayout()
         #hbox.addLayout(Buttons(*self.sharing_buttons))

@@ -369,7 +369,7 @@ class Plugin(BasePlugin):
             wallet_window.payto_e.paytomany()
             wallet_window.payto_e.setText("\n".join([ add + ", " + amt for add, amt in amountStrs.items()]))
         else:
-            wallet_window.payto_e.setText(addresses)
+            wallet_window.payto_e.setText('\n'.join(addresses))
         wallet_window.amount_e.setAmount(totalSatoshis)
         wallet_window.payto_e.update_size()
         

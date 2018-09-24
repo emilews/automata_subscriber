@@ -2,7 +2,7 @@
 
 This is licensed under the MIT open source license.
 
-![Screenshot](https://github.com/rt121212121/electron_cash_scheduled_payments_plugin/raw/master/screenshot.png)
+![Screenshot](https://github.com/cculianu/electron_cash_scheduled_payments_plugin/raw/master/screenshot.png)
 
 ## Donate ##
 
@@ -10,24 +10,24 @@ If you wish to encourage further development on things that matter to you, or ev
 
   bitcoincash:qqg34gn7xfrd7yr7xjuklarptxn0xqg9tgexm2zu9z
   
-![Screenshot](https://github.com/rt121212121/electron_cash_scheduled_payments_plugin/raw/master/donate.png)
+![Screenshot](https://github.com/cculianu/electron_cash_scheduled_payments_plugin/raw/master/donate.png)
 
 ## Installation ##
 
-1. Download the [latest reviewed version](https://github.com/rt121212121/electron_cash_scheduled_payments_plugin/archive/b66eef86e98d7ea862bc05ecc19e866e81ab294f.zip).
+1. Download the [latest reviewed version](https://github.com/cculianu/electron_cash_scheduled_payments_plugin/releases/download/1.1-pre1/scheduled_payments.zip).
 2. Get the latest version of the Electron Cash code from github (make sure it has the Plugin Manager that allows addition of plugins).
 3. Either select `add plugin` or drag the zip file onto the plugin manager window.
 4. It will be installed, and enabled.
 
 ## Security Warning ##
 
-I, Roger Taylor (rt121212121), author of this plugin, affirm that there is no malicious code intentionally added by me to this plugin.  Unless you read through every line of the code provided, this is the best you are going to get at this time.  If you obtain this plugin from any other source than this github repository under my user name, then the safety of this plugin given my affirmation is worthless.
+I, Roger Taylor (rt121212121), and I, Calin Culianu (cculianu) authors of this plugin, affirm that there is no malicious code intentionally added by either of us to this plugin.  If you obtain this plugin from any source other than this github repository, proceed at your own risk!
 
-The reason this needs to be said, is that an enabled Electron Cash plugin has almost complete access and potential control over any wallets that are open.  If a malicious author wished to, they could make you think you were sending payments to one address and redirect them anywhere they wanted.  The possibilities are endless, due to the access a plugin has.
+The reason this needs to be said, is that an enabled Electron Cash plugin has almost complete access and potential control over any wallets that are open.
 
 ## Usage ##
 
-Once you have the plugin installed and enabled, you may attempt to use it.
+Once you have the plugin installed and enabled, you may use it.
 
 1. Select the `Scheduled Payments` tab.
 2. Right click in the list window, and select the `New scheduled payment` item.

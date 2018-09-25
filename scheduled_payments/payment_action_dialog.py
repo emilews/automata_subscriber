@@ -84,11 +84,19 @@ class PaymentActionDialog(QDialog, MessageBoxMixin):
 
         f = ValueFormatter(self.main_window)
         amount = 0.0
+        amountFiat = 0.0
         for payment_data in payment_entries:
             for overdue_date in payment_data[PAYMENT_DATESOVERDUE]:
                 if (payment_data[PAYMENT_ID], overdue_date) in selected_ids:
-                    amount += payment_data[PAYMENT_AMOUNT]
-        self.summaryLabel.setText("Selected total: %s (%d occurrences)" % (f.format_value(amount, DISPLAY_AS_AMOUNT), len(selected_ids)))
+                    is_fiat = payment_data[PAYMENT_FLAGS] & PAYMENT_FLAG_AMOUNT_IS_FIAT
+                    if not is_fiat:
+                        amount += payment_data[PAYMENT_AMOUNT]
+                    else:
+                        amountFiat += abs(payment_data[PAYMENT_AMOUNT])
+        self.summaryLabel.setText("Selected total: %s%s%s (%d occurrences)" % (f.format_value(amount, DISPLAY_AS_AMOUNT) if amount else '',
+                                                                               ' + ' if amount and amountFiat else '',
+                                                                              f.format_value(amountFiat, DISPLAY_AS_AMOUNT_FIAT) if amountFiat else '',
+                                                                              len(selected_ids)))
         
 
 
@@ -124,10 +132,11 @@ class PaymentTable(MyTreeWidget):
 
         for payment_data in rows:
             for overdue_date in payment_data[PAYMENT_DATESOVERDUE]:
+                is_fiat = payment_data[PAYMENT_FLAGS] & PAYMENT_FLAG_AMOUNT_IS_FIAT
                 values = [
                     f.format_value(overdue_date, DISPLAY_AS_DATETIME),
                     payment_data[PAYMENT_DESCRIPTION],
-                    f.format_value(payment_data[PAYMENT_AMOUNT], DISPLAY_AS_AMOUNT),
+                    f.format_value(abs(payment_data[PAYMENT_AMOUNT]), DISPLAY_AS_AMOUNT if not is_fiat else DISPLAY_AS_AMOUNT_FIAT),
                     f.format_value(payment_data[PAYMENT_ADDRESS], DISPLAY_AS_ADDRESS),
                 ]
                 item = QTreeWidgetItem(values)

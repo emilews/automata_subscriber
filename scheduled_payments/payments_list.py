@@ -70,10 +70,12 @@ class ScheduledPaymentsList(MyTreeWidget, MessageBoxMixin):
         f = ValueFormatter(self.parent)
         for row in rows:
             row_key = row[PAYMENT_ID]
+            amt = abs(row[PAYMENT_AMOUNT])
+            is_fiat = row[PAYMENT_FLAGS] & PAYMENT_FLAG_AMOUNT_IS_FIAT
             values = [
                 row[PAYMENT_DESCRIPTION],
                 f.format_value(row[PAYMENT_ADDRESS], DISPLAY_AS_ADDRESS),
-                f.format_value(row[PAYMENT_AMOUNT], DISPLAY_AS_AMOUNT),
+                f.format_value(amt, DISPLAY_AS_AMOUNT if not is_fiat else DISPLAY_AS_AMOUNT_FIAT),
                 f.format_value(row[PAYMENT_DATELASTPAID], DISPLAY_AS_DATETIME),
                 f.format_value(row[PAYMENT_DATENEXTPAID], DISPLAY_AS_DATETIME),
             ]

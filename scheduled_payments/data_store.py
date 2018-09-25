@@ -8,7 +8,7 @@ class DataStore(dict):
         "payments": [
             [
               Address,      # The address to pay to.
-              Amount,       # Satoshis.
+              Amount,       # Satoshis (int). Or, if negative, in FIAT (float)
               DateLastPaid, # The date this was last paid, or None otherwise.
               When,         # Representation of how this is scheduled
               Count0,       # How many times this should be paid.  -1 = disabled, 0 = complete, > 100000 = countless

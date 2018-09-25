@@ -8,7 +8,7 @@ from electroncash import bitcoin
 from electroncash.address import Address
 from electroncash.i18n import _
 from electroncash_gui.qt.util import MessageBoxMixin, Buttons, HelpLabel
-from electroncash_gui.qt.amountedit import MyLineEdit, BTCAmountEdit
+from electroncash_gui.qt.amountedit import MyLineEdit, BTCAmountEdit, AmountEdit
 from electroncash_gui.qt.paytoedit import PayToEdit
 import electroncash.web as web
 
@@ -47,10 +47,12 @@ class PaymentDialog(QDialog, MessageBoxMixin):
         self.value_payto_outputs = []
         self.value_run_occurrences = self.count_labels.index("Always")
         self.set_flags(0 if self.payment_data is None else self.payment_data[PAYMENT_FLAGS])
+        payment_was_fiat = False
         
         if self.payment_data is not None:
             self.value_description = self.payment_data[PAYMENT_DESCRIPTION]
-            self.value_amount = self.payment_data[PAYMENT_AMOUNT]
+            self.value_amount = abs(self.payment_data[PAYMENT_AMOUNT])
+            payment_was_fiat = self.payment_data[PAYMENT_FLAGS] & PAYMENT_FLAG_AMOUNT_IS_FIAT
             self.value_run_occurrences = self.payment_data[PAYMENT_COUNT0]
         
         # NOTE: Set up the UI for this dialog.
@@ -74,7 +76,10 @@ class PaymentDialog(QDialog, MessageBoxMixin):
         msg = _('How much to pay.') + '\n\n' + _('Unhelpful descriptive text')
         self.amount_label = HelpLabel(_('Amount'), msg)
         self.amount_e = BTCAmountEdit(window.get_decimal_point) # WARNING: This has to be named this, as PayToEdit accesses it.
-        self.amount_e.setAmount(self.value_amount)
+        if not payment_was_fiat:
+            self.amount_e.setAmount(self.value_amount)
+        else:
+            self.amount_e.setHidden(True)
         # WARNING: This needs to be present before PayToEdit is constructed (as that accesses it's attribute on this object),
         # but added to the layout after in order to try and reduce the "cleared amount" problem that happens when an address
         # is entered (perhaps on a selected completion, i.e. of a contact).
@@ -105,8 +110,38 @@ class PaymentDialog(QDialog, MessageBoxMixin):
         self.payto_edit.setCompleter(completer)
         completer.setModel(self.completions)
 
+        amount_hbox = QHBoxLayout()
+        self.useFiatCheckbox = QCheckBox(_("Denomiate payment in FIAT rather than BCH"))
+        self.useFiatCheckbox.setToolTip(_("If you elect to denomiate the payment in FIAT, then the BCH transaction\nuses the FIAT price at the time of payment to determine how much\nactual BCH is transmitted to your payee.") + "\n\n" +  _("Requirements") +":\n"+ _("1. You must have a fiat currency defined and a server enabled in settings.") +"\n"+ _("2. The fiat spot price quote must but be available from the FX server."+ "\n"+ _("If this checkbox is interactive and not disabled, these requirements are met.")))
+        isFiatEnabled = self.plugin.can_do_fiat(self.main_window)
+        self.useFiatCheckbox.setChecked(payment_was_fiat)
+        self.useFiatCheckbox.setEnabled(isFiatEnabled)
+
+        self.fiat_amount_e = AmountEdit(self.main_window.fx.get_currency if isFiatEnabled else '')
+        self.fiat_amount_e.setHidden(not payment_was_fiat)
+        if payment_was_fiat:
+            self.fiat_amount_e.setText(str(self.value_amount))
+        
+        amount_hbox.addWidget(self.amount_e) # either this or fiat_amount_e are visible at any 1 time
+        amount_hbox.addWidget(self.fiat_amount_e) # either this or amoune_e are visible at any 1 time
+        amount_hbox.addWidget(self.useFiatCheckbox)
+        
+        def useFiatToggled(b):
+            # Note we do it this explicit way because the order matters to avoid quick visual glitches as widgets
+            # pop into and out of existence.  Hiding the visible one then revealing the invisible one is the best way
+            # to avoid glitches.  The reverse causes a slight detectable spastication of the UI. :/  -Calin
+            if b:
+                self.amount_e.setHidden(True)
+                self.fiat_amount_e.setHidden(False)
+            else:
+                self.fiat_amount_e.setHidden(True)
+                self.amount_e.setHidden(False)
+                
+        
+        self.useFiatCheckbox.toggled.connect(useFiatToggled)
+
         # WARNING: We created this before PayToEdit and add it to the layout after, due to the dependency issues with PayToEdit accessing `self.amount_e`.
-        formLayout.addRow(self.amount_label, self.amount_e)
+        formLayout.addRow(self.amount_label, amount_hbox)
         
         if payment_data is not None:
             text = _("No payments made.")
@@ -127,11 +162,14 @@ class PaymentDialog(QDialog, MessageBoxMixin):
         isEnabled = not self.main_window.wallet.has_password() and window.config.fee_per_kb() is not None
         self.value_autopayment = self.value_autopayment and isEnabled
         # Will show it for now, for encrypted wallets.  Might be less confusing not to show it.
-        self.autoPaymentCheckbox = QCheckBox(_("Make this payment automatically."))
+        options_hbox = QHBoxLayout()
+        self.autoPaymentCheckbox = QCheckBox(_("Make this payment automatically"))
         self.autoPaymentCheckbox.setToolTip(_("Requirements") +":\n"+ _("1. The wallet must not have a password.") +"\n"+ _("2. There must be a default fee/kb configured for the wallet."+ "\n"+ _("If this checkbox is interactive and not disabled, these requirements are met.")))
         self.autoPaymentCheckbox.setChecked(self.value_autopayment)
         self.autoPaymentCheckbox.setEnabled(isEnabled)
-        formLayout.addRow(_("Options"), self.autoPaymentCheckbox)
+        options_hbox.addWidget(self.autoPaymentCheckbox)
+        
+        formLayout.addRow(_("Options"), options_hbox)
 
         import importlib
         from . import when_widget
@@ -162,9 +200,11 @@ class PaymentDialog(QDialog, MessageBoxMixin):
         self.payto_edit.textChanged.connect(on_recipient_changed)
         
         def on_amount_changed():
-            self.value_amount = self.amount_e.get_amount()
+            self.value_amount = self.amount_e.get_amount() if not self.useFiatCheckbox.isChecked() else float(self.fiat_amount_e.get_amount() or 0.00)
             validate_input_values()
         self.amount_e.textChanged.connect(on_amount_changed)
+        self.fiat_amount_e.textChanged.connect(on_amount_changed)
+        self.useFiatCheckbox.toggled.connect(on_amount_changed)
 
         def on_description_changed():
             self.value_description = self.description_edit.text().strip()
@@ -214,13 +254,17 @@ class PaymentDialog(QDialog, MessageBoxMixin):
         payment_data = [ None ] * PAYMENT_ENTRY_LENGTH
         payment_data[PAYMENT_ID] = data_id
         payment_data[PAYMENT_ADDRESS] = self.value_payto_outputs[0][1].to_storage_string()
-        payment_data[PAYMENT_AMOUNT] = self.value_amount
+        flags = self.get_flags() # may include the new PAYMENT_FLAG_AMOUNT_IS_FIAT
+        if flags & PAYMENT_FLAG_AMOUNT_IS_FIAT:
+            payment_data[PAYMENT_AMOUNT] = -self.value_amount # NEW! Negative amounts indicate a fiat payment -- this is a hack to maintain backwards compat. with older plugin
+        else:
+            payment_data[PAYMENT_AMOUNT] = self.value_amount
         payment_data[PAYMENT_DESCRIPTION] = self.value_description
         payment_data[PAYMENT_COUNT0] = self.value_run_occurrences
         payment_data[PAYMENT_WHEN] = self.whenWidget.getWhen().toText()
         payment_data[PAYMENT_DATENEXTPAID] = self.whenWidget.getEstimatedTime()
-        payment_data[PAYMENT_FLAGS] = self.get_flags()
-        
+        payment_data[PAYMENT_FLAGS] = flags
+                
         wallet_name = self.main_window.wallet.basename()
         self.plugin.update_payment(wallet_name, payment_data)
         
@@ -242,6 +286,8 @@ class PaymentDialog(QDialog, MessageBoxMixin):
         flags = 0
         if self.value_autopayment:
             flags |= PAYMENT_FLAG_AUTOPAY
+        if self.useFiatCheckbox.isChecked():
+            flags |= PAYMENT_FLAG_AMOUNT_IS_FIAT
         return flags
         
     def set_flags(self, flags):

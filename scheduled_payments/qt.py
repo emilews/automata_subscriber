@@ -6,7 +6,7 @@ from PyQt5.QtWidgets import *
 
 from electroncash.address import Address
 from electroncash.i18n import _
-from electroncash.bitcoin import TYPE_ADDRESS
+from electroncash.bitcoin import TYPE_ADDRESS, COIN
 from electroncash.plugins import BasePlugin, hook
 from electroncash.util import user_dir, NotEnoughFunds, ExcessiveFee
 import electroncash.version
@@ -269,30 +269,42 @@ class Plugin(BasePlugin):
         network = wallet_window.network
         
         outputs = []
+        abortEarly = False
         for payment_data, overdue_payment_times in payment_entries:
-            totalSatoshis = len(overdue_payment_times) * payment_data[PAYMENT_AMOUNT]
+            is_fiat = payment_data[PAYMENT_FLAGS] & PAYMENT_FLAG_AMOUNT_IS_FIAT
+            if is_fiat:
+                totalFiat = len(overdue_payment_times) * abs(payment_data[PAYMENT_AMOUNT])
+                if not self.can_do_fiat(wallet_window):
+                    wallet_window.show_error(_("Failed to automatically pay a Scheduled Payment:") + " " + _("Fiat Exchange data not available"))
+                    abortEarly = True
+                    break
+                totalSatoshis = (totalFiat / float(wallet_window.fx.exchange_rate())) * COIN
+            else:
+                totalSatoshis = len(overdue_payment_times) * payment_data[PAYMENT_AMOUNT]
             address = Address.from_string(payment_data[PAYMENT_ADDRESS])
             outputs.append((TYPE_ADDRESS, address, totalSatoshis))        
 
         password = None
         tx = None
-        try:
-            tx = wallet.mktx(outputs, password, wallet_window.config)
-        except NotEnoughFunds:
-            wallet_window.show_error(_("Faiiled to automatically pay a Scheduled Payment:") + " " + _("Insufficient funds"))
-        except ExcessiveFee:
-            wallet_window.show_error(_("Faiiled to automatically pay a Scheduled Payment:") + " " + _("Excessive Fee"))
-        except BaseException as e:
-            wallet_window.show_error(_("Faiiled to automatically pay a Scheduled Payment:") + " " + str(e))
 
-        if tx:
-            status, data = network.broadcast(tx)
-            
-            if status:
-                # data is txid.
-                return data
-            # data is error message
-            wallet_window.show_error(_("Faiiled to automatically pay a Scheduled Payment:") + " " + str(data))
+        if not abortEarly:
+            try:
+                tx = wallet.mktx(outputs, password, wallet_window.config)
+            except NotEnoughFunds:
+                wallet_window.show_error(_("Failed to automatically pay a Scheduled Payment:") + " " + _("Insufficient funds"))
+            except ExcessiveFee:
+                wallet_window.show_error(_("Failed to automatically pay a Scheduled Payment:") + " " + _("Excessive Fee"))
+            except BaseException as e:
+                wallet_window.show_error(_("Failed to automatically pay a Scheduled Payment:") + " " + str(e))
+    
+            if tx:
+                status, data = network.broadcast(tx)
+                
+                if status:
+                    # data is txid.
+                    return data
+                # data is error message
+                wallet_window.show_error(_("Faiiled to automatically pay a Scheduled Payment:") + " " + str(data))
 
         # Fallback to remembering the overdue payments.
         # TODO: Alert the user about the failure - best way is to mark the payment.
@@ -334,7 +346,7 @@ class Plugin(BasePlugin):
                 # doesn't match, remember this thing
                 self.will_possibly_pay[label] = vals
 
-    will_possibly_pay = dict() # class-level dict of tx_desc (containiing a unique key) -> (wallet_name, payment_occurrence_keys)
+    will_possibly_pay = dict() # class-level dict of: tx_desc (containiing a unique key) -> (wallet_name, payment_occurrence_keys)
 
     def prompt_pay_overdue_payment_occurrences(self, wallet_name, payment_occurrence_keys):
         matches = self.match_overdue_payment_occurrences(wallet_name, payment_occurrence_keys)
@@ -349,9 +361,18 @@ class Plugin(BasePlugin):
         totalSatoshis = 0.0
         addresses = []
         amountStrs = dict()
+        abortEarly = False
         f = ValueFormatter(wallet_window)
+        
         for occurrence_count, payment_data in matches:
-            amount = occurrence_count * payment_data[PAYMENT_AMOUNT]
+            amount = occurrence_count * abs(payment_data[PAYMENT_AMOUNT])            
+            is_fiat = payment_data[PAYMENT_FLAGS] & PAYMENT_FLAG_AMOUNT_IS_FIAT
+            if is_fiat:
+                if not self.can_do_fiat(wallet_window):
+                    wallet_window.show_error(_("Payments contain Fiat amounts:") + " " + _("  (No FX rate available)"))
+                    abortEarly = True
+                    break
+                amount = (amount / float(wallet_window.fx.exchange_rate())) * COIN            
             totalSatoshis += amount
             address = payment_data[PAYMENT_ADDRESS]
             
@@ -364,6 +385,10 @@ class Plugin(BasePlugin):
                 addresses.append(Address.from_string(address).to_ui_string())
 
             amountStrs[addresses[-1]] = f.format_value(amount, DISPLAY_AS_AMOUNT_NO_UNITS)
+
+        if abortEarly:
+            wallet_window.do_clear()
+            return
 
         if len(addresses) > 1:
             wallet_window.payto_e.paytomany()
@@ -637,7 +662,7 @@ class Plugin(BasePlugin):
                     
         payment_data[PAYMENT_DATEUPDATED] = int(self.clock.getTime())
         
-        wallet_data[PAYMENT_DATA_KEY] = payment_entries # This is expected to trigger the wallet data to save.        
+        wallet_data[PAYMENT_DATA_KEY] = payment_entries # This is expected to trigger the wallet data to save.
         self.refresh_ui_for_wallet(wallet_name)
         
     def delete_payments(self, wallet_name, payment_ids):
@@ -650,3 +675,8 @@ class Plugin(BasePlugin):
                 
         wallet_data[PAYMENT_DATA_KEY] = payment_entries # This is expected to trigger the wallet data to save.
         self.refresh_ui_for_wallet(wallet_name)
+
+    def can_do_fiat(self, main_window=None):
+        if main_window is None:
+            main_window = self.wallet_windows.values()[0] if len(self.wallet_windows) else None
+        return main_window and main_window.fx and main_window.fx.is_enabled() and main_window.fx.get_currency() and main_window.fx.exchange_rate() is not None

@@ -301,7 +301,15 @@ class Plugin(BasePlugin):
                 wallet_window.show_error(_("Failed to automatically pay a Scheduled Payment:") + "\n" + (str(e) or "Unknown Error"))
     
             if tx:
-                status, data = network.broadcast_transaction(tx)
+                status, data = (None, None)
+                
+                if hasattr(network, 'broadcast_transaction'):
+                    status, data = network.broadcast_transaction(tx)                    
+                elif hasattr(network, 'broadcast'):
+                    status, data = network.broadcast(tx)
+                else:
+                    # wtf. someone changed the API
+                    data = _("Don't know how to broadcast a transaction. Are you on Electron Cash 3.2 or above?")
                 
                 if status:
                     # data is txid.

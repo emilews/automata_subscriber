@@ -275,33 +275,38 @@ class Plugin(BasePlugin):
             if is_fiat:
                 totalFiat = len(overdue_payment_times) * abs(payment_data[PAYMENT_AMOUNT])
                 if not self.can_do_fiat(wallet_window):
-                    wallet_window.show_error(_("Failed to automatically pay a Scheduled Payment:") + " " + _("Fiat Exchange data not available"))
+                    wallet_window.show_error(_("Failed to automatically pay a Scheduled Payment:") + "\n" + _("Fiat Exchange data not available"))
                     abortEarly = True
                     break
                 totalSatoshis = (totalFiat / float(wallet_window.fx.exchange_rate())) * COIN
             else:
                 totalSatoshis = len(overdue_payment_times) * payment_data[PAYMENT_AMOUNT]
             address = Address.from_string(payment_data[PAYMENT_ADDRESS])
-            outputs.append((TYPE_ADDRESS, address, totalSatoshis))        
+            outputs.append((TYPE_ADDRESS, address, int(totalSatoshis)))        
 
         password = None
         tx = None
 
         if not abortEarly:
             try:
-                tx = wallet.mktx(outputs, password, wallet_window.config)
+                tx = wallet.mktx(outputs, password, config)
             except NotEnoughFunds:
-                wallet_window.show_error(_("Failed to automatically pay a Scheduled Payment:") + " " + _("Insufficient funds"))
+                wallet_window.show_error(_("Failed to automatically pay a Scheduled Payment:") + "\n" + _("Insufficient funds"))
             except ExcessiveFee:
-                wallet_window.show_error(_("Failed to automatically pay a Scheduled Payment:") + " " + _("Excessive Fee"))
+                wallet_window.show_error(_("Failed to automatically pay a Scheduled Payment:") + "\n" + _("Excessive Fee"))
             except BaseException as e:
-                wallet_window.show_error(_("Failed to automatically pay a Scheduled Payment:") + " " + str(e))
+                import traceback
+                traceback.print_exc()
+                self.print_error("Outputs:",outputs)
+                wallet_window.show_error(_("Failed to automatically pay a Scheduled Payment:") + "\n" + (str(e) or "Unknown Error"))
     
             if tx:
-                status, data = network.broadcast(tx)
+                status, data = network.broadcast_transaction(tx)
                 
                 if status:
                     # data is txid.
+                    if data:
+                        wallet.set_label(data, _("Scheduled payment"))
                     return data
                 # data is error message
                 wallet_window.show_error(_("Faiiled to automatically pay a Scheduled Payment:") + " " + str(data))

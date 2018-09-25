@@ -20,6 +20,7 @@ class ScheduledPaymentsList(MyTreeWidget, MessageBoxMixin):
             _('Last Payment'),
             _('Next Payment'),
         ], 0, [])
+        self.setColumnHidden(3, True) # doesn't work anyway
         self.setSelectionMode(QAbstractItemView.ExtendedSelection)
         self.setSortingEnabled(True)
         if parent:

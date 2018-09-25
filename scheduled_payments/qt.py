@@ -269,6 +269,7 @@ class Plugin(BasePlugin):
         network = wallet_window.network
         
         outputs = []
+        descs = []
         abortEarly = False
         for payment_data, overdue_payment_times in payment_entries:
             is_fiat = payment_data[PAYMENT_FLAGS] & PAYMENT_FLAG_AMOUNT_IS_FIAT
@@ -281,6 +282,8 @@ class Plugin(BasePlugin):
                 totalSatoshis = (totalFiat / float(wallet_window.fx.exchange_rate())) * COIN
             else:
                 totalSatoshis = len(overdue_payment_times) * payment_data[PAYMENT_AMOUNT]
+            if payment_data[PAYMENT_DESCRIPTION]:
+                descs.append(payment_data[PAYMENT_DESCRIPTION])
             address = Address.from_string(payment_data[PAYMENT_ADDRESS])
             outputs.append((TYPE_ADDRESS, address, int(totalSatoshis)))        
 
@@ -314,7 +317,7 @@ class Plugin(BasePlugin):
                 if status:
                     # data is txid.
                     if data:
-                        wallet.set_label(data, _("Scheduled payment"))
+                        wallet.set_label(data, _("Scheduled payment") + ((": " + ', '.join(descs)) if descs else ''))
                     return data
                 # data is error message
                 wallet_window.show_error(_("Faiiled to automatically pay a Scheduled Payment:") + " " + str(data))

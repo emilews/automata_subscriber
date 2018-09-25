@@ -9,7 +9,7 @@ from electroncash.address import Address
 from electroncash.i18n import _
 from electroncash_gui.qt.util import MessageBoxMixin, Buttons, HelpLabel
 from electroncash_gui.qt.amountedit import MyLineEdit, BTCAmountEdit, AmountEdit
-from electroncash_gui.qt.paytoedit import PayToEdit
+from .not_broken_paytoedit import PayToEdit # We used our own custom PayToEdit which came from non-broken Electron Cash. Electron Cash SLP has a broken impleentation.
 import electroncash.web as web
 
 from .constants import *

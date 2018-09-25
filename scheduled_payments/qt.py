@@ -90,7 +90,11 @@ class Plugin(BasePlugin):
 
     def is_available(self):
         if self.is_version_compatible is None:
-            version = float(electroncash.version.PACKAGE_VERSION)
+            version = MINIMUM_ELECTRON_CASH_VERSION
+            try:
+                version = float(electroncash.version.PACKAGE_VERSION) # doesn't always work.  WTF Roger. :p
+            except ValueError:
+                pass
             self.is_version_compatible = version >= MINIMUM_ELECTRON_CASH_VERSION
         return True
         

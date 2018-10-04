@@ -198,19 +198,21 @@ class Plugin(BasePlugin):
 
         wallet_data = self.wallet_data[wallet_name]
         wallet_data.save()
+
         
         if len(deferred_results):
-            txid = self.autopay_payments(wallet_name, deferred_results)
+            txid = self.autopay_payments(wallet_name, deferred_results, current_time)
             # Note if the payments were deferred for some reason, because payment failed.
             if txid is None:
                 deferred_results = []
+
 
         # This is already done by the wallet loading code.
         if not on_wallet_loaded:
             self.refresh_ui_for_wallet(wallet_name)
 
         window = self.wallet_windows[wallet_name]
-        paid_payment_ids = set(payment_data[PAYMENT_ID] for payment_data, amount in deferred_results)
+        paid_payment_ids = { payment_data[PAYMENT_ID] for payment_data, amount in deferred_results }
         if len(paid_payment_ids) > 0:
             s = wallet_name +": "
             if len(paid_payment_ids) == 1:
@@ -218,7 +220,7 @@ class Plugin(BasePlugin):
             else:
                 s += _("%d scheduled payments were made.") % len(paid_payment_ids)
             window.notify(s)
-        due_payment_ids = set(payment_data[PAYMENT_ID] for payment_data in due_payment_entries).difference(paid_payment_ids)
+        due_payment_ids = { payment_data[PAYMENT_ID] for payment_data in due_payment_entries }.difference(paid_payment_ids)
         if len(due_payment_ids) > 0:
             s = wallet_name +": "
             if len(due_payment_ids) == 1:
@@ -244,7 +246,7 @@ class Plugin(BasePlugin):
                 deferred_result = payment_data, overdue_payment_times
             else:
                 # If this fails, the payments will have become overdue instead.
-                self.autopay_payments(wallet_name, [(payment_data, overdue_payment_times)])
+                self.autopay_payments(wallet_name, [(payment_data, overdue_payment_times)], current_time)
         else:
             self.remember_overdue_payment_occurrences( payment_data, overdue_payment_times)
         # This sets the new time marker for what is considered overdue.
@@ -263,7 +265,7 @@ class Plugin(BasePlugin):
                 return payment_data[PAYMENT_FLAGS] & PAYMENT_FLAG_AUTOPAY == PAYMENT_FLAG_AUTOPAY
         return False
 
-    def autopay_payments(self, wallet_name, payment_entries):
+    def autopay_payments(self, wallet_name, payment_entries, current_time):
         """ For unencrypted wallets, the option is (will be) there to make the payments automatically, rather than simply mark them as unpaid occurrences. """
         # payment_entries = [ (payment_data, overdue_payment_times), ... ]
         
@@ -322,6 +324,10 @@ class Plugin(BasePlugin):
                     # data is txid.
                     if data:
                         wallet.set_label(data, _("Scheduled payment") + ((": " + ', '.join(descs)) if descs else ''))
+                        for payment_data, dummy in payment_entries:
+                            payment_data[PAYMENT_DATELASTPAID] = current_time
+                        self.wallet_data[wallet_name].save()
+
                     return data
                 # data is error message
                 wallet_window.show_error(_("Faiiled to automatically pay a Scheduled Payment:") + " " + str(data))

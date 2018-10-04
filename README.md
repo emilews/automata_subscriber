@@ -20,9 +20,12 @@ This is licensed under the MIT open source license.
 If you wish to encourage further development on things that matter to you, or even just show your appreciation, please feel free to donate to:
 
   Roger: bitcoincash:qqg34gn7xfrd7yr7xjuklarptxn0xqg9tgexm2zu9z
-  Calin: bitcoincash:qphax4s4n9h60jxj2fkrjs35w2tvgd4wzvf52cgtzc
   
 ![Roger](https://github.com/cculianu/electron_cash_scheduled_payments_plugin/raw/master/donate.png)
+
+
+  Calin: bitcoincash:qphax4s4n9h60jxj2fkrjs35w2tvgd4wzvf52cgtzc
+
 ![Calin](https://github.com/cculianu/electron_cash_scheduled_payments_plugin/raw/master/donate_calin.png)
 
 ## Installation ##

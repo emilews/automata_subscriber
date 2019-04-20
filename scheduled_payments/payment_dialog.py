@@ -27,7 +27,6 @@ class PaymentDialog(QDialog, MessageBoxMixin):
         # WARNING: Copying some attributes so PayToEdit() will work.
         self.main_window = window
         self.contacts = self.main_window.contacts
-        self.is_max = self.main_window.is_max # Unused, as we do not use max.
         self.completions = self.main_window.completions
 
         self.count_labels = [

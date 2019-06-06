@@ -25,7 +25,7 @@ class ScheduledPaymentsList(MyTreeWidget, MessageBoxMixin):
         self.setSortingEnabled(True)
         if parent:
             parent.cashaddr_toggled_signal.connect(self.update)
-        
+
         self.plugin = plugin
         self.wallet_name = wallet_name
 
@@ -33,26 +33,26 @@ class ScheduledPaymentsList(MyTreeWidget, MessageBoxMixin):
         menu = QMenu()
         selected_items = self.selectedItems()
         selected_payment_ids = [ v.data(0, Qt.UserRole) for v in selected_items ]
-        if len(selected_items) == 0: 
+        if len(selected_items) == 0:
             menu.addAction(_("New scheduled payment"), lambda: self.plugin.open_create_payment_dialog(self.wallet_name))
             menu.addAction(_("Toggle clock window"), lambda: self.plugin.toggle_clock_window(self.wallet_name))
         elif len(selected_items) == 1:
             menu.addAction(_("Edit"), lambda: self.plugin.open_edit_payment_dialog(self.wallet_name, selected_items[0].data(0, Qt.UserRole)))
         if len(selected_items) >= 1:
             menu.addAction(_("Delete"), lambda: self.on_delete(selected_payment_ids))
-            
+
         if len(selected_items) and self.plugin.check_payments_overdue(self.wallet_name, selected_payment_ids):
             menu.addAction(_("Pay overdue occurrences"), lambda: self.on_pay_overdue_occurrences(selected_payment_ids))
             menu.addAction(_("Forget overdue occurrences"), lambda: self.on_forget_overdue_occurrences(selected_payment_ids))
-                    
+
         menu.exec_(self.viewport().mapToGlobal(position))
-        
+
     def on_pay_overdue_occurrences(self, payment_ids):
         self.plugin.open_payment_action_window(self.wallet_name, payment_ids, ACTION_PAY)
-        
+
     def on_forget_overdue_occurrences(self, payment_ids):
         self.plugin.open_payment_action_window(self.wallet_name, payment_ids, ACTION_FORGET)
-        
+
     def on_delete(self, selected_ids):
         if self.question(_("Are you sure you want to delete the selected payments?"), title=_("Delete Scheduled Payments")):
             self.plugin.delete_payments(self.wallet_name, selected_ids)
@@ -61,12 +61,12 @@ class ScheduledPaymentsList(MyTreeWidget, MessageBoxMixin):
         item = self.currentItem()
         current_key = item.data(0, Qt.UserRole) if item else None
         self.clear()
-        
+
         rows = self.plugin.get_wallet_payments(self.wallet_name)
         # TODO: Sort?
-        
-        badIcon = QIcon(":icons/status_disconnected.png")
-        goodIcon = QIcon(":icons/status_connected.png")
+
+        badIcon = QIcon(":icons/status_disconnected.svg") if QFile.exists(":icons/status_disconnected.svg") else QIcon(":icons/status_disconnected.png")
+        goodIcon = QIcon(":icons/status_connected.svg") if QFile.exists(":icons/status_connected.svg") else QIcon(":icons/status_connected.png")
 
         f = ValueFormatter(self.parent)
         for row in rows:
@@ -95,4 +95,3 @@ class ScheduledPaymentsList(MyTreeWidget, MessageBoxMixin):
             self.addTopLevelItem(item)
             if row_key == current_key:
                 self.setCurrentItem(item)
-

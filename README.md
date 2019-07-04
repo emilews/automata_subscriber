@@ -1,4 +1,4 @@
-# Scheduled Payments - Electron Cash Plugin #
+# Automata Subscriber - Electron Cash Plugin #
   
 ## Calin Contribution's ##
 This is a continuation of Roger Taylor's original Scheduled Payment plugin available [here](https://github.com/rt121212121/electron_cash_scheduled_payments_plugin).  In addition to what Roger did, I modified his plugin to have the following:

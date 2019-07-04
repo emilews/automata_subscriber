@@ -1,10 +1,10 @@
 {
-    "display_name": "Scheduled Payments",
+    "display_name": "Automata Subscriber",
     "version": "1.5",
-    "description": "This allows a user to specify recurring payments to a number of recipients.",
-    "project_url": "https://github.com/cculianu/electron_cash_scheduled_payments_plugin",
+    "description": "This allows a user to specify recurring payments to a number of recipients and manage a log type subscription.",
+    "project_url": "https://github.com/emilews/automata_subscriber",
     "minimum_ec_version": "3.2",
-    "package_name": "scheduled_payments",
+    "package_name": "automata_subscriber",
     "available_for": [
         "qt"
     ]
